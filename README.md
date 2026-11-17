@@ -53,7 +53,6 @@ describes the package:
     <version>1.0.0</version>
     <release>1</release>
     <architecture>amd64</architecture>
-    <repository>core</repository>
     <summary>BSD utilities and tools such as sudo</summary>
     <description>The base utilities of TalaOS.</description>
     <license>MIT</license>
@@ -86,9 +85,9 @@ describes the package:
 
 - **`format`** is the version of the manifest format.
 - **`<package>`:** `version` is the software's version and `release` counts the packagings of that version; the
-  `$version` of a file name joins them (`1.0.0-1`). `architecture` is `amd64`, `aarch64` or `noarch`; `repository` is
-  `core`, `extra`, `lib32`, `nofree` or `lib32nofree`; `license` is an SPDX expression; `installed-size` is in bytes
-  and is what `check-space` checks.
+  `$version` of a file name joins them (`1.0.0-1`). `architecture` is `amd64`, `aarch64` or `noarch`; `license` is an SPDX
+  expression; `installed-size` is in bytes and is what `check-space` checks. The manifest does not name a repository:
+  a package belongs to the repository it is published in.
 - **`<relations>`** holds `depends`, `recommends` (what `--with-recommendeds` and `weak-deps` install), `conflicts`,
   `provides` (a virtual name) and `replaces`. Each names a package, and may bound its version with `at-least`
   (inclusive) and `below` (exclusive).
