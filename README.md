@@ -56,7 +56,7 @@ describes the package:
     <repository>core</repository>
     <summary>BSD utilities and tools such as sudo</summary>
     <description>The base utilities of TalaOS.</description>
-    <license>MIT AND BSD-2-Clause</license>
+    <license>MIT</license>
     <homepage>https://github.com/Progmasoft/tala-utils</homepage>
     <packager>Progmasoft &lt;support@progmasoft.com&gt;</packager>
     <built>2027-05-01T12:00:00Z</built>
@@ -107,5 +107,5 @@ No code is written yet.
 
 ## License
 
-[MIT](LICENSE.txt). Progmasoft's own code is also covered by the [Progmasoft Patent Grant 1.1](PATENTS.md); code
-taken from elsewhere keeps its own license and notices. Participation follows the [Code of Conduct](CODE_OF_CONDUCT.md).
+[MIT](LICENSE.txt), also covered by the [Progmasoft Patent Grant 1.1](PATENTS.md). Participation follows the
+[Code of Conduct](CODE_OF_CONDUCT.md).
