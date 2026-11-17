@@ -8,3 +8,4 @@ Versions follow [Semantic Versioning](https://semver.org/).
 ## Unreleased
 
 - The repository of TalaPM: README, MIT license, Patent Grant and code of conduct.
+- The package format: a `.talapkg` is tar + xz with `.META/MANIFEST.XML`.
