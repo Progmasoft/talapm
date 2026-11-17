@@ -40,6 +40,64 @@ The commands:
 `-s` or `--setting` overrides the configuration for one command, in the syntax of the configuration files:
 `-s '<toml>'`, `-s'<toml>'`, `--setting '<toml>'` and `--setting='<toml>'`.
 
+## Packages
+
+A `.talapkg` is a tar archive compressed with xz. Beside the files it installs, it holds `.META/MANIFEST.XML`, which
+describes the package:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<manifest format="1">
+  <package>
+    <name>tala-utils</name>
+    <version>1.0.0</version>
+    <release>1</release>
+    <architecture>amd64</architecture>
+    <repository>core</repository>
+    <summary>BSD utilities and tools such as sudo</summary>
+    <description>The base utilities of TalaOS.</description>
+    <license>MIT AND BSD-2-Clause</license>
+    <homepage>https://github.com/Progmasoft/tala-utils</homepage>
+    <packager>Progmasoft &lt;support@progmasoft.com&gt;</packager>
+    <built>2027-05-01T12:00:00Z</built>
+    <installed-size>1843200</installed-size>
+  </package>
+
+  <relations>
+    <depends name="opencrt" at-least="1.0.0" below="2.0.0"/>
+  </relations>
+
+  <files>
+    <directory path="usr/share/tala-utils" mode="0755" owner="root" group="wheel"/>
+    <file path="usr/bin/ls" mode="0755" owner="root" group="wheel" size="81920"
+          sha256="9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08"/>
+    <file path="usr/bin/sudo" mode="4755" owner="root" group="wheel" size="163840"
+          sha256="60303ae22b998861bce3b28f33eec1be758a213c86c93c076dbe9f558c11c752"/>
+    <file path="etc/sudoers" mode="0440" owner="root" group="wheel" size="1024"
+          sha256="fd61a03af4f77d870fc21e05e7e80678095c92d808cfb3b5c279ee04c74aca13" config="true"/>
+    <symlink path="usr/bin/[" target="test"/>
+  </files>
+
+  <scripts>
+    <script phase="post-install" path=".META/SCRIPTS/post-install"/>
+  </scripts>
+</manifest>
+```
+
+- **`format`** is the version of the manifest format.
+- **`<package>`:** `version` is the software's version and `release` counts the packagings of that version; the
+  `$version` of a file name joins them (`1.0.0-1`). `architecture` is `amd64`, `aarch64` or `noarch`; `repository` is
+  `core`, `extra`, `lib32`, `nofree` or `lib32nofree`; `license` is an SPDX expression; `installed-size` is in bytes
+  and is what `check-space` checks.
+- **`<relations>`** holds `depends`, `recommends` (what `--with-recommendeds` and `weak-deps` install), `conflicts`,
+  `provides` (a virtual name) and `replaces`. Each names a package, and may bound its version with `at-least`
+  (inclusive) and `below` (exclusive).
+- **`<files>`** lists each directory, file and symbolic link with its path from the root, and each file with its mode,
+  owner, group, size and SHA-256. `provides <file>` searches these lists. `remove` keeps a file marked
+  `config="true"`; `purge` removes it.
+- **`<scripts>`** are optional hooks of the install and remove phases, stored under `.META/SCRIPTS/`.
+- The signatures of the package and the database are not part of the manifest; the `[signature]` settings govern them.
+
 It is written in C++17 under the
 [Progmasoft Core C++ Coding Guidelines](https://github.com/Progmasoft/progmasoft-cpp) and built with Bazel. It uses
 CaDiCaL, libwebsockets, GnuTLS, toml++, libarchive, liblzma, libxml2, GPGME++ and tl::expected, and is tested with
