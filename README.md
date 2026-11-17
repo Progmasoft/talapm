@@ -1,0 +1,53 @@
+<!-- SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com> -->
+<!-- SPDX-License-Identifier: MIT -->
+
+# TalaPM
+
+TalaPM is the package manager of TalaOS. It installs `.talapkg` packages from the TalaOS repositories, resolves their
+dependencies with a SAT solver, and supports partial upgrades.
+
+The commands:
+
+| Command | What it does |
+| --- | --- |
+| `install <package>` | Installs the package; reinstalls it if it is installed |
+| `install <package> --update`, `-u` | Synchronizes the database, then installs the package |
+| `install <package> --upgrade`, `-U` | Upgrades the system packages, then installs the package |
+| `install <package> --needs` | Installs only what is needed |
+| `install <package> --with-recommendeds` | Installs or reinstalls the package and installs its recommended packages that are not installed |
+| `remove <package>` | Removes the package |
+| `purge <package>` | Removes the package with its configuration and cache files |
+| `update` | Synchronizes the database |
+| `upgrade` | Upgrades the system packages |
+| `upgrade --check` | Lists the packages that can be upgraded, without upgrading |
+| `upgrade <package>` | Upgrades one system package |
+| `upgrade --update`, `upgrade -u`, `update --upgrade`, `update -U` | Synchronizes the database and upgrades the system packages |
+| `full-upgrade` | Upgrades the system packages, removing packages where needed |
+| `full-upgrade --update`, `-u` | Synchronizes the database, then does a full upgrade |
+| `auto-remove` | Removes dependencies that nothing needs |
+| `search <package>` | Searches for packages |
+| `info <package>` | Shows a package's information |
+| `list --installed`, `--available`, `--upgradable` | Lists packages |
+| `list <package> --versions`, `--depends`, `--rdepends` | Shows a package's versions, dependencies or reverse dependencies |
+| `policy <package>` | Shows a package's versions and where they come from |
+| `provides <file>` | Finds the package that provides a file |
+| `cache clean all`, `packages`, `meta` | Cleans the whole cache, the downloaded packages, or the repository metadata |
+| `cache make` | Creates the repository metadata; fails if it exists |
+| `cache make --force`, `cache make!` | Creates the repository metadata, overwriting it if it exists |
+| `repo list`, `--enabled`, `--disabled` | Lists the repositories |
+| `explain <error-code>` | Explains an error |
+
+`-s` or `--setting` overrides the configuration for one command, in the syntax of the configuration files:
+`-s '<toml>'`, `-s'<toml>'`, `--setting '<toml>'` and `--setting='<toml>'`.
+
+It is written in C++17 under the
+[Progmasoft Core C++ Coding Guidelines](https://github.com/Progmasoft/progmasoft-cpp) and built with Bazel. It uses
+CaDiCaL, libwebsockets, GnuTLS, toml++, libarchive, liblzma, libxml2, GPGME++ and tl::expected, and is tested with
+[Catch3](https://github.com/Progmasoft/catch3) and ankerl::nanobench.
+
+No code is written yet.
+
+## License
+
+[MIT](LICENSE.txt). Progmasoft's own code is also covered by the [Progmasoft Patent Grant 1.1](PATENTS.md); code
+taken from elsewhere keeps its own license and notices. Participation follows the [Code of Conduct](CODE_OF_CONDUCT.md).
