@@ -83,6 +83,10 @@ TEST_CASE("a word after an option that takes no value is refused")
         = ParseAs<Commands::Install>({ "install", "-U", "--", "pkg" });
     CHECK(separated.shouldUpgrade);
     CHECK(separated.packages == std::vector<std::string>{ "pkg" });
+    Commands::Install bare
+        = ParseAs<Commands::Install>({ "install", "--", "pkg" });
+    CHECK(bare.packages == std::vector<std::string>{ "pkg" });
+    CHECK_FALSE(bare.shouldUpgrade);
 }
 
 TEST_CASE("a short flag takes what follows its letter as its value")
