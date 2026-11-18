@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+module(name = "talapm", version = "0.1.0")
+
+bazel_dep(name = "rules_cc", version = "0.2.25")
+bazel_dep(name = "fmt", version = "12.2.1")
+bazel_dep(name = "libxml2", version = "2.15.4")
+bazel_dep(name = "tl-expected", version = "1.3.1")
+bazel_dep(name = "tomlplusplus", version = "3.4.0.bcr.1")
+
+# Catch3 is not in the Bazel Central Registry before its 0.5.0; until then it
+# comes from its release tag.
+bazel_dep(name = "catch3", version = "0.4.0", dev_dependency = True)
+git_override(
+    module_name = "catch3",
+    commit = "8979c1caf2eee321cf497671805d2177980c421e",  # catch3-0.4.0
+    remote = "https://github.com/Progmasoft/catch3.git",
+)
+
+# indicators and tabulate are not in the Bazel Central Registry; their release
+# archives are pinned by digest, and only their headers are used.
+http_archive = use_repo_rule("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
+
+http_archive(
+    name = "indicators",
+    build_file = "//third_party:indicators.BUILD",
+    sha256 = "70da7a693ff7a6a283850ab6d62acf628eea17d386488af8918576d0760aef7b",
+    strip_prefix = "indicators-2.3",
+    urls = ["https://github.com/p-ranav/indicators/archive/refs/tags/v2.3.tar.gz"],
+)
+
+http_archive(
+    name = "tabulate",
+    build_file = "//third_party:tabulate.BUILD",
+    sha256 = "3c12853cbf103adf659c4821351a302351d139513f1c43528095da41e8a37044",
+    strip_prefix = "tabulate-2.2",
+    urls = ["https://github.com/p-ranav/tabulate/archive/refs/tags/v2.2.tar.gz"],
+)
