@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+# GitHub-hosted runner labels that actionlint 1.7.12 does not know yet.
+self-hosted-runner:
+  labels:
+    - ubuntu-26.04

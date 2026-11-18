@@ -1,0 +1,56 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-26.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install Clang
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends clang
+      - name: Test
+        env:
+          CC: clang
+          CXX: clang++
+        run: bazelisk test //...
+      - name: Test with AddressSanitizer and UndefinedBehaviorSanitizer
+        env:
+          CC: clang
+          CXX: clang++
+        run: bazelisk test --config=asan //...
+
+  format:
+    name: Format
+    runs-on: ubuntu-26.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The profile of Progmasoft Core C++ Coding Guidelines needs clang-format 23.
+      - name: Format
+        run: |
+          python3 -m venv "$RUNNER_TEMP/format"
+          "$RUNNER_TEMP/format/bin/pip" install clang-format==23.1.5
+          "$RUNNER_TEMP/format/bin/clang-format" --dry-run --Werror src/Progmasoft/TalaPM/*.cpp src/Progmasoft/TalaPM/*.hpp

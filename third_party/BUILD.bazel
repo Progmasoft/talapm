@@ -1,0 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+# The archives MODULE.bazel fetches are built by the files here.

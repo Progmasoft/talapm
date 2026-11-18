@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+common --enable_platform_specific_config
+build --cxxopt=-std=c++17 --host_cxxopt=-std=c++17
+build --per_file_copt=^src/.*@-Wall,-Wextra,-Wpedantic,-Werror
+test --test_output=errors
+
+# Sanitizers: bazel test --config=asan //...
+build:asan --copt=-fsanitize=address,undefined --linkopt=-fsanitize=address,undefined --copt=-fno-omit-frame-pointer

@@ -1,0 +1,42 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+load("@rules_cc//cc:cc_library.bzl", "cc_library")
+load("@rules_cc//cc:cc_test.bzl", "cc_test")
+
+# The parts of TalaPM that need no operating system: versions, manifests,
+# the command line and the configuration.
+cc_library(
+    name = "core",
+    srcs = [
+        "src/Progmasoft/TalaPM/CommandLine.cpp",
+        "src/Progmasoft/TalaPM/Configuration.cpp",
+        "src/Progmasoft/TalaPM/Error.cpp",
+        "src/Progmasoft/TalaPM/Manifest.cpp",
+        "src/Progmasoft/TalaPM/Version.cpp",
+    ],
+    hdrs = [
+        "src/Progmasoft/TalaPM/CommandLine.hpp",
+        "src/Progmasoft/TalaPM/Configuration.hpp",
+        "src/Progmasoft/TalaPM/Error.hpp",
+        "src/Progmasoft/TalaPM/Manifest.hpp",
+        "src/Progmasoft/TalaPM/Version.hpp",
+    ],
+    strip_include_prefix = "src",
+    deps = [
+        "@libxml2//:xml2",
+        "@tl-expected",
+        "@tomlplusplus",
+    ],
+)
+
+cc_test(
+    name = "core_tests",
+    size = "small",
+    srcs = glob(["src/Progmasoft/TalaPM/*Tests.cpp"]),
+    deps = [
+        ":core",
+        "@catch3",
+        "@catch3//:catch3_main",
+    ],
+)
