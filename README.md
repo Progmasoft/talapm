@@ -103,8 +103,9 @@ describes the package:
 
 It is written in C++17 under the
 [Progmasoft Core C++ Coding Guidelines](https://github.com/Progmasoft/progmasoft-cpp) and built with Bazel. It uses
-CaDiCaL, libwebsockets, GnuTLS, toml++, libarchive, liblzma, libxml2, GPGME++ and tl::expected, and is tested with
-[Catch3](https://github.com/Progmasoft/catch3) and ankerl::nanobench.
+CaDiCaL, libwebsockets, GnuTLS, toml++, yyjson, libarchive, liblzma, libxml2, GPGME++ and tl::expected, and is tested
+with [Catch3](https://github.com/Progmasoft/catch3) and ankerl::nanobench. It talks to repositories over HTTPS:
+libwebsockets is its HTTP client and GnuTLS its TLS; it uses no WebSocket.
 
 No code is written yet.
 
