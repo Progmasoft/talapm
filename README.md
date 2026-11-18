@@ -44,6 +44,24 @@ The commands:
 `-s` or `--setting` overrides the configuration for one command, in the syntax of the configuration files:
 `-s '<toml>'`, `-s'<toml>'`, `--setting '<toml>'` and `--setting='<toml>'`.
 
+## Configuration
+
+The configuration is TOML, in files that all have the same syntax. From the highest to the lowest, each overriding
+those below it:
+
+1. `-s` and `--setting` on the command line, a later one over an earlier one.
+2. Files in `/etc/talapm.d/`, at any depth, whose name starts with a character that is not a letter or a digit;
+3. then those whose name starts with a digit;
+4. then with an uppercase letter;
+5. then with a lowercase letter. Within each of these, by the bytes of the name, so `00-a.toml` is above `10-b.toml`.
+6. `/etc/talapm.conf.toml`, which [etc/talapm.conf.toml](etc/talapm.conf.toml) installs with the defaults.
+7. `/etc/talapm.conf.d/config.toml`, installed empty.
+
+A file in `/etc/talapm.d/` counts only when its name ends in `.toml`, so `.conf.toml` too; `.toml.conf`, `.yaml`,
+`.json`, `.ini`, a name without an extension and every other file are not read at all. That directory is installed
+empty. A key TalaPM does not know is an error that names its file, and so is a mirror that is
+not `https://`. Repositories and mirrors keep the order they are written in: the first is tried first.
+
 ## Packages
 
 A `.talapkg` is a tar archive compressed with xz. Beside the files it installs, it holds `.META/MANIFEST.XML`, which

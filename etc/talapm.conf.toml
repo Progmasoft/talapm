@@ -1,0 +1,35 @@
+# SPDX-FileCopyrightText: 2026 Progmasoft <support@progmasoft.com>
+# SPDX-License-Identifier: MIT
+
+# The configuration of TalaPM, installed as /etc/talapm.conf.toml. Files in
+# /etc/talapm.d/ and -s on the command line override it; see the README.
+
+[download]
+parallel = 4
+weak-deps = false
+keep-cache = true
+check-space = true
+verbosity = "User-Friendly"
+
+[signature]
+level = ["Recommend", "Database"]
+
+[repo.built-in.core]
+enabled = true
+
+[repo.built-in.extra]
+enabled = true
+
+[repo.built-in.lib32]
+enabled = false
+
+[repo.built-in.nofree]
+enabled = false
+
+[repo.built-in.lib32nofree]
+enabled = false
+
+# Example:
+# [repo.built-in.example]
+# enabled = true
+# mirror-uris = ["https://talapm.example.com"]

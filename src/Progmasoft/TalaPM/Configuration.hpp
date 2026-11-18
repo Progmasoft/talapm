@@ -4,6 +4,7 @@
 #pragma once
 
 #include <string>
+#include <string_view>
 #include <vector>
 
 #include "Progmasoft/TalaPM/Error.hpp"
@@ -66,6 +67,15 @@ namespace Progmasoft::TalaPM
         /// The `-s` settings, in the order given; the last is the highest.
         std::vector<std::string> settings;
     };
+
+    /// Whether a file of `etc/talapm.d/` is a drop-in: its name ends in
+    /// `.toml`, so `.conf.toml` counts, and `.toml.conf`, `.yaml`, `.json`,
+    /// `.ini`, a name without an extension and any other do not.
+    ///
+    /// @param path The path of the file; only its name is looked at.
+    /// @return true when it counts.
+    bool
+    IsDropInName(std::string_view path);
 
     /// The drop-ins that count, highest first: files ending in `.toml` (so
     /// `.conf.toml` too, but not `.toml.conf`); those whose name starts with a
