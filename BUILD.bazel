@@ -11,6 +11,7 @@ cc_library(
     srcs = [
         "src/Progmasoft/TalaPM/CommandLine.cpp",
         "src/Progmasoft/TalaPM/Configuration.cpp",
+        "src/Progmasoft/TalaPM/ConfigurationFiles.cpp",
         "src/Progmasoft/TalaPM/Error.cpp",
         "src/Progmasoft/TalaPM/Manifest.cpp",
         "src/Progmasoft/TalaPM/Version.cpp",
@@ -18,6 +19,7 @@ cc_library(
     hdrs = [
         "src/Progmasoft/TalaPM/CommandLine.hpp",
         "src/Progmasoft/TalaPM/Configuration.hpp",
+        "src/Progmasoft/TalaPM/ConfigurationFiles.hpp",
         "src/Progmasoft/TalaPM/Error.hpp",
         "src/Progmasoft/TalaPM/Manifest.hpp",
         "src/Progmasoft/TalaPM/Version.hpp",
@@ -34,6 +36,8 @@ cc_test(
     name = "core_tests",
     size = "small",
     srcs = glob(["src/Progmasoft/TalaPM/*Tests.cpp"]),
+    # The installed configuration, which a test reads.
+    data = ["etc/talapm.conf.toml"],
     deps = [
         ":core",
         "@catch3",
