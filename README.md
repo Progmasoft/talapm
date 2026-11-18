@@ -57,8 +57,9 @@ those below it:
 6. `/etc/talapm.conf.toml`, which [etc/talapm.conf.toml](etc/talapm.conf.toml) installs with the defaults.
 7. `/etc/talapm.conf.d/config.toml`, installed empty.
 
-A file in `/etc/talapm.d/` counts when its name ends in `.toml`, so `.conf.toml` too, but not `.toml.conf`; that
-directory is installed empty. A key TalaPM does not know is an error that names its file, and so is a mirror that is
+A file in `/etc/talapm.d/` counts only when its name ends in `.toml`, so `.conf.toml` too; `.toml.conf`, `.yaml`,
+`.json`, `.ini`, a name without an extension and every other file are not read at all. That directory is installed
+empty. A key TalaPM does not know is an error that names its file, and so is a mirror that is
 not `https://`. Repositories and mirrors keep the order they are written in: the first is tried first.
 
 ## Packages

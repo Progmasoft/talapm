@@ -104,7 +104,10 @@ namespace Progmasoft::TalaPM
                  entries.increment(error))
             {
                 std::error_code kindError;
-                if (!entries->is_regular_file(kindError) || kindError)
+                // Only drop-ins are opened: a .yaml, .json or .ini file, or one
+                // without an extension, is not read at all.
+                if (!IsDropInName(entries->path().generic_string())
+                    || !entries->is_regular_file(kindError) || kindError)
                 {
                     continue;
                 }

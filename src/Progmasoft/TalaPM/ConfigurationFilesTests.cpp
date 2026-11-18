@@ -176,3 +176,31 @@ TEST_CASE("a link to a directory is not followed")
     REQUIRE(sources.has_value());
     CHECK(sources->dropIns.size() == 1);
 }
+
+TEST_CASE("only .toml files of talapm.d are read")
+{
+    Root root("kinds");
+    // Each of these would be refused if it were read: too large and not TOML.
+    std::string large(1024 * 1024 + 1, '{');
+    for (const char *name : { "etc/talapm.d/a.yaml",
+                              "etc/talapm.d/b.yml",
+                              "etc/talapm.d/c.json",
+                              "etc/talapm.d/d.ini",
+                              "etc/talapm.d/e",
+                              "etc/talapm.d/f.toml.conf",
+                              "etc/talapm.d/g.conf",
+                              "etc/talapm.d/h.TOML",
+                              "etc/talapm.d/.toml",
+                              "etc/talapm.d/i.toml~" })
+    {
+        root.Write(name, large);
+    }
+    root.Write("etc/talapm.d/j.conf.toml", "[download]\nparallel = 3\n");
+    auto sources = ReadConfigurationSources(root.Path(), {});
+    REQUIRE(sources.has_value());
+    REQUIRE(sources->dropIns.size() == 1);
+    CHECK(sources->dropIns[0].path == "etc/talapm.d/j.conf.toml");
+    auto configuration = LoadSystemConfiguration(root.Path(), {});
+    REQUIRE(configuration.has_value());
+    CHECK(configuration->download.parallel == 3);
+}

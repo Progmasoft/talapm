@@ -360,16 +360,20 @@ namespace Progmasoft::TalaPM
 
     } // namespace
 
+    bool
+    IsDropInName(std::string_view path)
+    {
+        std::string_view name = BaseName(path);
+        return EndsWith(name, ".toml") && name != ".toml";
+    }
+
     std::vector<ConfigurationFile>
     OrderDropIns(std::vector<ConfigurationFile> dropIns)
     {
         dropIns.erase(std::remove_if(dropIns.begin(),
                                      dropIns.end(),
                                      [](const ConfigurationFile &file) {
-                                         std::string_view name
-                                             = BaseName(file.path);
-                                         return !EndsWith(name, ".toml")
-                                                || name == ".toml";
+                                         return !IsDropInName(file.path);
                                      }),
                       dropIns.end());
         std::stable_sort(
