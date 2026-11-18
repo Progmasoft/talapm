@@ -6,6 +6,10 @@
 TalaPM is the package manager of TalaOS. It installs `.talapkg` packages from the TalaOS repositories, resolves their
 dependencies with a SAT solver, and supports partial upgrades.
 
+Every change is atomic: an install, an upgrade or a removal either completes or leaves the system as it was. TalaPM
+unpacks and checks the new files beside the old ones, records the transaction in a journal, then swaps them into
+place with renames; after a crash or a power cut, the journal finishes the transaction or rolls it back.
+
 The commands:
 
 | Command | What it does |
@@ -99,8 +103,9 @@ describes the package:
 
 It is written in C++17 under the
 [Progmasoft Core C++ Coding Guidelines](https://github.com/Progmasoft/progmasoft-cpp) and built with Bazel. It uses
-CaDiCaL, libwebsockets, GnuTLS, toml++, libarchive, liblzma, libxml2, GPGME++ and tl::expected, and is tested with
-[Catch3](https://github.com/Progmasoft/catch3) and ankerl::nanobench.
+CaDiCaL, libwebsockets, GnuTLS, toml++, yyjson, libarchive, liblzma, libxml2, GPGME++ and tl::expected, and is tested
+with [Catch3](https://github.com/Progmasoft/catch3) and ankerl::nanobench. It talks to repositories over HTTPS:
+libwebsockets is its HTTP client and GnuTLS its TLS; it uses no WebSocket.
 
 No code is written yet.
 
