@@ -6,6 +6,10 @@
 TalaPM is the package manager of TalaOS. It installs `.talapkg` packages from the TalaOS repositories, resolves their
 dependencies with a SAT solver, and supports partial upgrades.
 
+Every change is atomic: an install, an upgrade or a removal either completes or leaves the system as it was. TalaPM
+unpacks and checks the new files beside the old ones, records the transaction in a journal, then swaps them into
+place with renames; after a crash or a power cut, the journal finishes the transaction or rolls it back.
+
 The commands:
 
 | Command | What it does |
