@@ -116,10 +116,11 @@ TEST_CASE("higher sources win, and -s is the highest")
 TEST_CASE("new repositories keep the order they are written in")
 {
     ConfigurationSources sources = Sources();
-    sources.dropIns = { { "talapm.d/mirrors.toml",
-                          "[repo.built-in.zeta]\nenabled = true\nmirror-uris = "
-                          "[\"https://b.example\", \"https://a.example\"]\n"
-                          "[repo.built-in.alpha]\nenabled = true\n" } };
+    sources.dropIns
+        = { { "talapm.d/mirrors.toml",
+              "[repo.zeta]\nenabled = true\nmirror-uris = "
+              "[\"https://b.example\", \"https://a.example\"]\n"
+              "[repo.alpha]\nmirror-uris = [\"https://a.example\"]\n" } };
     auto configuration = LoadConfiguration(sources);
     REQUIRE(configuration.has_value());
     REQUIRE(configuration->repositories.size() == 7);
@@ -137,9 +138,19 @@ TEST_CASE("invalid configuration is refused, naming its source")
            "[download]\nparallel = \"4\"\n",
            "[download]\nspeed = 1\n",
            "[colors]\n",
-           "[repo.built-in.x]\nenabled = 1\n",
-           "[repo.built-in.x]\nmirror-uris = [\"http://plain.example\"]\n",
+           "[repo.built-in.core]\nenabled = 1\n",
+           "[repo.built-in.x]\nenabled = true\n",
+           "[repo.built-in.core]\nmirror-uris = "
+           "[\"https://elsewhere.example\"]\n",
+           "[repo.x]\nmirror-uris = [\"http://plain.example\"]\n",
+           "[repo.x]\nmirror-uris = []\n",
+           "[repo.x]\nenabled = true\n",
+           "[repo.core]\nmirror-uris = [\"https://a.example\"]\n",
            "[repo.other.x]\nenabled = true\n",
+           "[download]\nverbosity = \"Loud\"\n",
+           "[color]\nlevel = \"Sometimes\"\n",
+           "[color]\nlevel = 1\n",
+           "[color]\nshade = \"Auto\"\n",
            "[signature]\nlevel = [1]\n",
            "not toml [" })
     {
@@ -150,4 +161,83 @@ TEST_CASE("invalid configuration is refused, naming its source")
         CHECK(configuration.error().code == ErrorCode::kBadConfiguration);
         CHECK(configuration.error().message.rfind("-s #1: ", 0) == 0);
     }
+}
+
+TEST_CASE("verbosity takes its five values, and color its three")
+{
+    for (std::string_view verbosity : Progmasoft::TalaPM::kVerbosities)
+    {
+        ConfigurationSources sources = Sources();
+        sources.settings = { "[download]\nverbosity = \""
+                             + std::string(verbosity) + "\"\n" };
+        auto configuration = LoadConfiguration(sources);
+        REQUIRE(configuration.has_value());
+        CHECK(configuration->download.verbosity == verbosity);
+    }
+    for (const auto &[text, level] :
+         { std::pair{ "Always", Progmasoft::TalaPM::ColorLevel::kAlways },
+           std::pair{ "Never", Progmasoft::TalaPM::ColorLevel::kNever },
+           std::pair{ "Auto", Progmasoft::TalaPM::ColorLevel::kAuto } })
+    {
+        ConfigurationSources sources = Sources();
+        sources.settings
+            = { std::string("[color]\nlevel = \"") + text + "\"\n" };
+        auto configuration = LoadConfiguration(sources);
+        REQUIRE(configuration.has_value());
+        CHECK(configuration->color == level);
+    }
+}
+
+TEST_CASE("a dump reads back as the same configuration, and get takes its keys")
+{
+    ConfigurationSources sources = Sources();
+    sources.settings
+        = { "[color]\nlevel = \"Never\"\n[repo.example]\nenabled = "
+            "true\nmirror-uris = [\"https://repo.example.org/\"]\n" };
+    auto configuration = LoadConfiguration(sources);
+    REQUIRE(configuration.has_value());
+    std::string dump = Progmasoft::TalaPM::DumpConfiguration(*configuration);
+    CHECK(dump.find("[repo.example]\nenabled = true\nmirror-uris = "
+                    "[\"https://repo.example.org/\"]\n")
+          != std::string::npos);
+    CHECK(dump.find("package.tala.run") == std::string::npos);
+
+    ConfigurationSources again;
+    again.settings = { dump };
+    auto reread = LoadConfiguration(again);
+    REQUIRE(reread.has_value());
+    CHECK(Progmasoft::TalaPM::DumpConfiguration(*reread) == dump);
+
+    using Progmasoft::TalaPM::GetSetting;
+    CHECK(GetSetting(*configuration, "download.parallel").value() == "4");
+    CHECK(GetSetting(*configuration, "color.level").value() == "\"Never\"");
+    CHECK(GetSetting(*configuration, "signature.level").value()
+          == "[\"Recommend\", \"Database\"]");
+    CHECK(GetSetting(*configuration, "repo.built-in.core.enabled").value()
+          == "true");
+    CHECK(GetSetting(*configuration, "repo.example.mirror-uris").value()
+          == "[\"https://repo.example.org/\"]");
+    CHECK(GetSetting(*configuration, "repo.built-in.core.mirror-uris")
+              .error()
+              .code
+          == ErrorCode::kUsage);
+    CHECK(GetSetting(*configuration, "download").error().code
+          == ErrorCode::kUsage);
+}
+
+TEST_CASE("the defaults are the installed file, and built-in mirrors are "
+          "TalaPM's own")
+{
+    auto defaults = Progmasoft::TalaPM::DefaultConfiguration();
+    REQUIRE(defaults.repositories.size() == 5);
+    for (const auto &repository : defaults.repositories)
+    {
+        CHECK(repository.isBuiltIn);
+        CHECK(repository.mirrorUris
+              == std::vector<std::string>{
+                  std::string(Progmasoft::TalaPM::kBuiltInMirror) });
+    }
+    ConfigurationSources dumped;
+    dumped.settings = { Progmasoft::TalaPM::DumpConfiguration(defaults) };
+    REQUIRE(LoadConfiguration(dumped).has_value());
 }

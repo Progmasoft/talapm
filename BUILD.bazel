@@ -12,6 +12,7 @@ cc_library(
         "src/Progmasoft/TalaPM/CommandLine.cpp",
         "src/Progmasoft/TalaPM/Configuration.cpp",
         "src/Progmasoft/TalaPM/ConfigurationFiles.cpp",
+        "src/Progmasoft/TalaPM/ConfigurationText.cpp",
         "src/Progmasoft/TalaPM/Error.cpp",
         "src/Progmasoft/TalaPM/Manifest.cpp",
         "src/Progmasoft/TalaPM/Version.cpp",

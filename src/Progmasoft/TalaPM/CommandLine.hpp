@@ -3,11 +3,13 @@
 
 #pragma once
 
+#include <optional>
 #include <string>
 #include <string_view>
 #include <variant>
 #include <vector>
 
+#include "Progmasoft/TalaPM/Configuration.hpp"
 #include "Progmasoft/TalaPM/Error.hpp"
 
 namespace Progmasoft::TalaPM::Commands
@@ -147,9 +149,35 @@ namespace Progmasoft::TalaPM::Commands
         std::string code;
     };
 
-    /// `--help`, `-h`, or no command.
+    /// `--help`, `-h`, or no command; `<command> --help` names the command.
     struct Help
+    {
+        /// The command whose help is asked for; empty for TalaPM's own.
+        std::string command;
+    };
+
+    /// `--version`.
+    struct Version
     {};
+
+    /// `config dump-default`: the default configuration as TOML.
+    struct ConfigDumpDefault
+    {};
+
+    /// `config validate`: check the configuration.
+    struct ConfigValidate
+    {};
+
+    /// `config dump`: the configuration in effect as TOML.
+    struct ConfigDump
+    {};
+
+    /// `config get <setting>`: one setting of the configuration in effect.
+    struct ConfigGet
+    {
+        /// The dotted key, such as `download.parallel`.
+        std::string setting;
+    };
 
 } // namespace Progmasoft::TalaPM::Commands
 
@@ -171,12 +199,45 @@ namespace Progmasoft::TalaPM
                                  Commands::CacheMake,
                                  Commands::RepositoryList,
                                  Commands::Explain,
-                                 Commands::Help>;
+                                 Commands::Help,
+                                 Commands::Version,
+                                 Commands::ConfigDumpDefault,
+                                 Commands::ConfigValidate,
+                                 Commands::ConfigDump,
+                                 Commands::ConfigGet>;
+
+    /// `--color`.
+    enum class ColorChoice
+    {
+        kAlways,
+        kAuto,
+        kNever,
+    };
+
+    /// The options every command takes, wherever they stand on the line.
+    struct GlobalOptions
+    {
+        /// `-y`, `--yes`: answer yes to every question.
+        bool assumeYes = false;
+        /// `--dry-run`: show what would be done and do nothing.
+        bool isDryRun = false;
+        /// `-q`, `--quiet`.
+        bool isQuiet = false;
+        /// `-V`, `--verbose`; it wins over the configuration's verbosity.
+        bool isVerbose = false;
+        /// `--color`; it wins over the configuration's `[color] level`.
+        std::optional<ColorChoice> color;
+        /// `--root`: the system TalaPM reads and changes, `/` without it.
+        std::optional<std::string> root;
+        /// `--default-config`: read no configuration file.
+        bool useDefaultConfiguration = false;
+    };
 
     /// A command line, read: its command and its `-s` settings.
     struct Invocation
     {
         Command command;
+        GlobalOptions options;
         /// The text of each `-s`/`--setting`, in configuration syntax, in the
         /// order given; a later one wins.
         std::vector<std::string> settings;
@@ -197,5 +258,16 @@ namespace Progmasoft::TalaPM
     /// @return The invocation, or kUsage.
     Expected<Invocation>
     ParseCommandLine(const std::vector<std::string_view> &arguments);
+
+    /// Puts the global options over the configuration, last of every source,
+    /// so they win over `-s` too: `--quiet` makes the verbosity
+    /// "Always-Silent", `--verbose` "Always-Verbose", and `--color` sets the
+    /// color level.
+    ///
+    /// @param options       The global options of the command line.
+    /// @param configuration The configuration, every other source applied.
+    void
+    ApplyGlobalOptions(const GlobalOptions &options,
+                       Configuration &configuration);
 
 } // namespace Progmasoft::TalaPM

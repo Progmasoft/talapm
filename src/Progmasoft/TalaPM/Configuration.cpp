@@ -132,10 +132,18 @@ namespace Progmasoft::TalaPM
                 if (name == "verbosity")
                 {
                     std::optional<std::string> text = node.value<std::string>();
-                    if (!node.is_string() || !text || text->empty())
+                    if (!node.is_string() || !text
+                        || std::find(std::begin(kVerbosities),
+                                     std::end(kVerbosities),
+                                     *text)
+                               == std::end(kVerbosities))
                     {
-                        return Invalid(source,
-                                       "download.verbosity is not a word");
+                        return Invalid(
+                            source,
+                            "download.verbosity is not "
+                            "\"Always-Verbose\", \"Somewhat-Verbose\", "
+                            "\"User-Friendly\", \"Near-Silent\" or "
+                            "\"Always-Silent\"");
                     }
                     download.verbosity = std::move(*text);
                     continue;
@@ -194,6 +202,14 @@ namespace Progmasoft::TalaPM
                                    "repository " + std::string(name)
                                        + " has no key " + std::string(field));
                 }
+                if (repository.isBuiltIn)
+                {
+                    return Invalid(source,
+                                   "repo.built-in." + std::string(name)
+                                       + " takes no mirror-uris: the mirrors "
+                                         "of a built-in repository are "
+                                         "TalaPM's own");
+                }
                 Expected<std::vector<std::string>> uris
                     = ReadStrings(source, node, "mirror-uris");
                 if (!uris)
@@ -208,36 +224,84 @@ namespace Progmasoft::TalaPM
                                        "mirror " + uri + " is not https://");
                     }
                 }
+                if (uris->empty())
+                {
+                    return Invalid(source,
+                                   "repo." + std::string(name)
+                                       + ".mirror-uris is empty");
+                }
                 repository.mirrorUris = std::move(*uris);
             }
             return {};
         }
 
-        /// The repository tables of `[repo.built-in]`, in the order they are
-        /// written.
-        Expected<std::vector<std::pair<std::string, const toml::table *>>>
+        /// Whether a name is that of a built-in repository.
+        bool
+        IsBuiltInName(std::string_view name)
+        {
+            return std::any_of(std::begin(kBuiltInRepositories),
+                               std::end(kBuiltInRepositories),
+                               [&](const auto &entry) {
+                                   return entry.first == name;
+                               });
+        }
+
+        /// A repository table of a source: its name, whether it is built in,
+        /// and the table.
+        struct RepositoryTable
+        {
+            std::string name;
+            bool isBuiltIn = false;
+            const toml::table *table = nullptr;
+        };
+
+        /// The repository tables of `[repo.built-in]` and of the user, in the
+        /// order they are written.
+        Expected<std::vector<RepositoryTable>>
         RepositoryTables(std::string_view source, const toml::node &repo)
         {
             const toml::table *repoTable = repo.as_table();
-            const toml::table *builtIn
-                = repoTable != nullptr ? (*repoTable)["built-in"].as_table()
-                                       : nullptr;
-            if (repoTable == nullptr || builtIn == nullptr
-                || repoTable->size() != 1)
+            if (repoTable == nullptr)
             {
-                return Invalid(source,
-                               "repo holds only [repo.built-in.<name>] tables");
+                return Invalid(source, "repo holds only repository tables");
             }
-            std::vector<std::pair<std::string, const toml::table *>> tables;
-            for (const auto &[key, node] : *builtIn)
+            std::vector<RepositoryTable> tables;
+            for (const auto &[key, node] : *repoTable)
             {
-                if (!node.is_table() || !IsPackageName(key.str()))
+                std::string_view name = key.str();
+                if (name != "built-in")
                 {
-                    return Invalid(source,
-                                   "repo.built-in." + std::string(key.str())
-                                       + " is not a repository table");
+                    if (!node.is_table() || !IsPackageName(name)
+                        || IsBuiltInName(name))
+                    {
+                        return Invalid(
+                            source,
+                            "repo." + std::string(name)
+                                + " is not a repository of the user: "
+                                  "a table with a name that no "
+                                  "built-in repository has");
+                    }
+                    tables.push_back(
+                        { std::string(name), false, node.as_table() });
+                    continue;
                 }
-                tables.emplace_back(std::string(key.str()), node.as_table());
+                const toml::table *builtIn = node.as_table();
+                if (builtIn == nullptr)
+                {
+                    return Invalid(source, "repo.built-in is not a table");
+                }
+                for (const auto &[inner, table] : *builtIn)
+                {
+                    if (!table.is_table() || !IsBuiltInName(inner.str()))
+                    {
+                        return Invalid(source,
+                                       "repo.built-in."
+                                           + std::string(inner.str())
+                                           + " is not a built-in repository");
+                    }
+                    tables.push_back(
+                        { std::string(inner.str()), true, table.as_table() });
+                }
             }
             // toml++ keeps keys sorted; the order of priority is the written
             // one.
@@ -245,9 +309,9 @@ namespace Progmasoft::TalaPM
                              tables.end(),
                              [](auto &left, auto &right) {
                                  const toml::source_position &a
-                                     = left.second->source().begin;
+                                     = left.table->source().begin;
                                  const toml::source_position &b
-                                     = right.second->source().begin;
+                                     = right.table->source().begin;
                                  return a.line != b.line ? a.line < b.line
                                                          : a.column < b.column;
                              });
@@ -264,10 +328,10 @@ namespace Progmasoft::TalaPM
             {
                 return tl::unexpected(tables.error());
             }
-            for (const auto &entry : *tables)
+            for (const RepositoryTable &entry : *tables)
             {
-                const std::string &name = entry.first;
-                const toml::table *table = entry.second;
+                const std::string &name = entry.name;
+                const toml::table *table = entry.table;
                 auto found = std::find_if(repositories.begin(),
                                           repositories.end(),
                                           [&](const RepositorySettings &known) {
@@ -276,7 +340,11 @@ namespace Progmasoft::TalaPM
                 if (found == repositories.end())
                 {
                     repositories.push_back(
-                        RepositorySettings{ name, false, {} });
+                        RepositorySettings{ name,
+                                            false,
+                                            {},
+                                            entry.isBuiltIn,
+                                            std::string(source) });
                     found = repositories.end() - 1;
                 }
                 Expected<void> result
@@ -310,6 +378,34 @@ namespace Progmasoft::TalaPM
             return {};
         }
 
+        Expected<void>
+        ApplyColor(std::string_view source,
+                   const toml::node &node,
+                   Configuration &configuration)
+        {
+            const toml::table *table = node.as_table();
+            std::optional<std::string> level
+                = table != nullptr && table->size() == 1
+                      ? (*table)["level"].value<std::string>()
+                      : std::nullopt;
+            constexpr std::pair<std::string_view, ColorLevel> kLevels[] = {
+                { "Auto", ColorLevel::kAuto },
+                { "Always", ColorLevel::kAlways },
+                { "Never", ColorLevel::kNever },
+            };
+            for (const auto &[text, value] : kLevels)
+            {
+                if (level && *level == text && (*table)["level"].is_string())
+                {
+                    configuration.color = value;
+                    return {};
+                }
+            }
+            return Invalid(source,
+                           "color holds only level, \"Auto\", \"Always\" or "
+                           "\"Never\"");
+        }
+
         /// Applies one source of TOML text.
         Expected<void>
         Apply(std::string_view source,
@@ -339,6 +435,10 @@ namespace Progmasoft::TalaPM
                 else if (name == "signature")
                 {
                     result = ApplySignature(source, node, configuration);
+                }
+                else if (name == "color")
+                {
+                    result = ApplyColor(source, node, configuration);
                 }
                 else if (name == "repo")
                 {
@@ -394,12 +494,7 @@ namespace Progmasoft::TalaPM
     Expected<Configuration>
     LoadConfiguration(const ConfigurationSources &sources)
     {
-        Configuration configuration;
-        for (const auto &[name, isEnabled] : kBuiltInRepositories)
-        {
-            configuration.repositories.push_back(
-                RepositorySettings{ std::string(name), isEnabled, {} });
-        }
+        Configuration configuration = DefaultConfiguration();
         std::vector<const ConfigurationFile *> lowestFirst{ &sources.base,
                                                             &sources.main };
         std::vector<ConfigurationFile> dropIns = OrderDropIns(sources.dropIns);
@@ -425,6 +520,32 @@ namespace Progmasoft::TalaPM
             {
                 return tl::unexpected(result.error());
             }
+        }
+        for (const RepositorySettings &repository : configuration.repositories)
+        {
+            if (!repository.isBuiltIn && repository.mirrorUris.empty())
+            {
+                return Fail(ErrorCode::kBadConfiguration,
+                            repository.namedIn + ": repo." + repository.name
+                                + " has no mirror-uris; a repository of the "
+                                  "user names its mirrors");
+            }
+        }
+        return configuration;
+    }
+
+    Configuration
+    DefaultConfiguration()
+    {
+        Configuration configuration;
+        for (const auto &[name, isEnabled] : kBuiltInRepositories)
+        {
+            configuration.repositories.push_back(
+                RepositorySettings{ std::string(name),
+                                    isEnabled,
+                                    { std::string(kBuiltInMirror) },
+                                    true,
+                                    "TalaPM" });
         }
         return configuration;
     }
