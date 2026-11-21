@@ -14,6 +14,9 @@ verbosity = "User-Friendly"
 [signature]
 level = ["Recommend", "Database"]
 
+[color]
+level = "Auto" # "Auto", "Always" or "Never"
+
 [repo.built-in.core]
 enabled = true
 
@@ -29,7 +32,8 @@ enabled = false
 [repo.built-in.lib32nofree]
 enabled = false
 
-# Example:
-# [repo.built-in.example]
+# A repository of your own, with its keyring in
+# /etc/talapm.keyrings/repo/example.gpg:
+# [repo.example]
 # enabled = true
-# mirror-uris = ["https://talapm.example.com"]
+# mirror-uris = ["https://repo.example.org/"]

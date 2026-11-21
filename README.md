@@ -44,6 +44,33 @@ The commands:
 `-s` or `--setting` overrides the configuration for one command, in the syntax of the configuration files:
 `-s '<toml>'`, `-s'<toml>'`, `--setting '<toml>'` and `--setting='<toml>'`.
 
+## Options of every command
+
+They stand anywhere on the command line, before or after the command:
+
+| Option | Meaning |
+| --- | --- |
+| `--help`, `-h` | The help of TalaPM, or of the command it follows: `talapm install --help` |
+| `--version` | The version |
+| `-y`, `--yes` | Answer yes to every question |
+| `--dry-run` | Show what would be done, and do nothing |
+| `-q`, `--quiet` | Write nothing but problems: the verbosity `"Always-Silent"` |
+| `-V`, `--verbose` | Write everything: the verbosity `"Always-Verbose"`; not with `-q` |
+| `--color always\|auto\|never`, `--color=…` | Colors, over `[color] level` |
+| `--root <path>`, `--root=<path>` | Act on the system at that root: its `etc/` and its keyrings |
+| `--default-config` | Read no configuration file: TalaPM's defaults, and `-s` on top |
+
+`-q`, `-V` and `--color` win over every configuration source, `-s` included.
+
+## The config command
+
+| Command | Prints |
+| --- | --- |
+| `config dump-default` | The default configuration, as TOML |
+| `config dump` | The configuration in effect, as TOML: every key, the repositories in their priority |
+| `config get <setting>` | One setting of it as a TOML value: `config get download.parallel` prints `4` |
+| `config validate` | Nothing; it fails naming the first problem, a missing keyring of an enabled repository too |
+
 ## Configuration
 
 The configuration is TOML, in files that all have the same syntax. From the highest to the lowest, each overriding
@@ -59,6 +86,19 @@ A file in `/etc/talapm.d/` counts only when its name ends in `.toml`, so `.conf.
 `.json`, `.ini`, a name without an extension and every other file are not read at all. That directory is installed
 empty. A key TalaPM does not know is an error that names its file, and so is a mirror that is
 not `https://`. Repositories and mirrors keep the order they are written in: the first is tried first.
+
+`download.verbosity` is `"Always-Verbose"`, `"Somewhat-Verbose"`, `"User-Friendly"` (the default), `"Near-Silent"` or
+`"Always-Silent"`; `[color] level` is `"Auto"` (the default), `"Always"` or `"Never"`.
+
+The built-in repositories, `[repo.built-in.core]` and the others, take only `enabled`: their mirrors and keyrings are
+built into TalaPM. A repository of your own is a table beside them, with its mirrors, and its keyring in
+`/etc/talapm.keyrings/repo/<name>.gpg`:
+
+```toml
+[repo.example]
+enabled = true
+mirror-uris = ["https://repo.example.org/"]
+```
 
 ## Packages
 

@@ -5,6 +5,7 @@
 
 #include <cstdint>
 #include <filesystem>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -44,5 +45,34 @@ namespace Progmasoft::TalaPM
     Expected<Configuration>
     LoadSystemConfiguration(const std::filesystem::path &root,
                             std::vector<std::string> settings);
+
+    /// The defaults with the `-s` settings on top, reading no file, as
+    /// `--default-config` asks.
+    ///
+    /// @param settings The `-s` settings.
+    /// @return The configuration, or kBadConfiguration.
+    Expected<Configuration>
+    LoadDefaultConfiguration(std::vector<std::string> settings);
+
+    /// The keyring of a repository of the user,
+    /// `etc/talapm.keyrings/repo/<name>.gpg` under the root; none for a
+    /// built-in repository, whose keyring is TalaPM's own.
+    ///
+    /// @param root       The root of the system.
+    /// @param repository The repository.
+    /// @return The path, or nothing for a built-in repository.
+    std::optional<std::filesystem::path>
+    KeyringOf(const std::filesystem::path &root,
+              const RepositorySettings &repository);
+
+    /// What `config validate` checks beyond reading the configuration: that
+    /// every enabled repository of the user has its keyring.
+    ///
+    /// @param root          The root of the system.
+    /// @param configuration The configuration, read.
+    /// @return Nothing, or kBadConfiguration naming the first missing keyring.
+    Expected<void>
+    ValidateSystem(const std::filesystem::path &root,
+                   const Configuration &configuration);
 
 } // namespace Progmasoft::TalaPM
