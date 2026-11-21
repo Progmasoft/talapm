@@ -42,22 +42,6 @@ namespace Progmasoft::TalaPM
                                                    : path.substr(slash + 1);
         }
 
-        /// The class of a drop-in by the first byte of its name, highest first.
-        int
-        ClassOf(std::string_view name)
-        {
-            char first = name.empty() ? '\0' : name.front();
-            if (first >= '0' && first <= '9')
-            {
-                return 1;
-            }
-            if (first >= 'A' && first <= 'Z')
-            {
-                return 2;
-            }
-            return first >= 'a' && first <= 'z' ? 3 : 0;
-        }
-
         bool
         EndsWith(std::string_view text, std::string_view end)
         {
@@ -382,10 +366,6 @@ namespace Progmasoft::TalaPM
             [](const ConfigurationFile &left, const ConfigurationFile &right) {
                 std::string_view a = BaseName(left.path);
                 std::string_view b = BaseName(right.path);
-                if (ClassOf(a) != ClassOf(b))
-                {
-                    return ClassOf(a) < ClassOf(b);
-                }
                 return a != b ? a < b : left.path < right.path;
             });
         return dropIns;
@@ -402,10 +382,11 @@ namespace Progmasoft::TalaPM
         }
         std::vector<const ConfigurationFile *> lowestFirst{ &sources.base,
                                                             &sources.main };
+        // Read in their order, so a later drop-in overrides an earlier one.
         std::vector<ConfigurationFile> dropIns = OrderDropIns(sources.dropIns);
-        for (auto file = dropIns.rbegin(); file != dropIns.rend(); ++file)
+        for (const ConfigurationFile &file : dropIns)
         {
-            lowestFirst.push_back(&*file);
+            lowestFirst.push_back(&file);
         }
         for (const ConfigurationFile *file : lowestFirst)
         {

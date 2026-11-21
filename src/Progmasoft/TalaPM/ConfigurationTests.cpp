@@ -79,7 +79,7 @@ TEST_CASE("the default configuration reads")
     CHECK_FALSE(configuration->repositories[3].isEnabled);
 }
 
-TEST_CASE("drop-ins count by their names, highest first")
+TEST_CASE("drop-ins are read by the bytes of their names, the lowest first")
 {
     std::vector<ConfigurationFile> files{
         { "talapm.d/b.toml", "" },        { "talapm.d/A.toml", "" },
@@ -88,10 +88,10 @@ TEST_CASE("drop-ins count by their names, highest first")
         { "talapm.d/old.toml.conf", "" }, { "talapm.d/notes.txt", "" },
     };
     CHECK(Names(OrderDropIns(files))
-          == std::vector<std::string>{ "talapm.d/_z.toml",
-                                       "talapm.d/00-y.conf.toml",
+          == std::vector<std::string>{ "talapm.d/00-y.conf.toml",
                                        "talapm.d/10-x.toml",
                                        "talapm.d/A.toml",
+                                       "talapm.d/_z.toml",
                                        "talapm.d/sub/a.toml",
                                        "talapm.d/b.toml" });
 }
@@ -100,8 +100,8 @@ TEST_CASE("higher sources win, and -s is the highest")
 {
     ConfigurationSources sources = Sources();
     sources.dropIns
-        = { { "talapm.d/50-low.toml", "[download]\nparallel = 2\n" },
-            { "talapm.d/10-high.toml", "[download]\nparallel = 8\n" } };
+        = { { "talapm.d/90-high.toml", "[download]\nparallel = 8\n" },
+            { "talapm.d/10-low.toml", "[download]\nparallel = 2\n" } };
     sources.settings = { "[repo.built-in.nofree]\nenabled = true\n",
                          "[download]\nparallel = 16\n" };
     auto configuration = LoadConfiguration(sources);

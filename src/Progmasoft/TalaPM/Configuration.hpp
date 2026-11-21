@@ -77,14 +77,13 @@ namespace Progmasoft::TalaPM
     bool
     IsDropInName(std::string_view path);
 
-    /// The drop-ins that count, highest first: files ending in `.toml` (so
-    /// `.conf.toml` too, but not `.toml.conf`); those whose name starts with a
-    /// character other than a letter or digit, then a digit, then an uppercase
-    /// letter, then a lowercase letter, and within each by the bytes of the
-    /// name, so `00-a.toml` is above `10-b.toml`.
+    /// The drop-ins that count, in the order they are read: files ending in
+    /// `.toml` (so `.conf.toml` too, but not `.toml.conf`), by the bytes of the
+    /// name, then of the path. A later one overrides an earlier one, so
+    /// `90-b.toml` is above `10-a.toml`.
     ///
     /// @param dropIns The files under `etc/talapm.d/`.
-    /// @return Those that count, highest first.
+    /// @return Those that count, the lowest first.
     std::vector<ConfigurationFile>
     OrderDropIns(std::vector<ConfigurationFile> dropIns);
 
