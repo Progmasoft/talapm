@@ -106,16 +106,17 @@ TEST_CASE("a system's files override each other in the order of the notes")
         REQUIRE(configuration.has_value());
         return configuration->download.parallel;
     };
+    // Read as 20-digit, Upper, _special, lower: the last one read wins.
     CHECK(load({ "[download]\nparallel = 9\n" }) == 9);
+    CHECK(load({}) == 5);
+    std::filesystem::remove(root.Path() / "etc/talapm.d/lower.toml");
     CHECK(load({}) == 8);
     std::filesystem::remove(root.Path() / "etc/talapm.d/_special.toml");
+    CHECK(load({}) == 6);
+    std::filesystem::remove(root.Path() / "etc/talapm.d/Upper.toml");
     CHECK(load({}) == 7);
     std::filesystem::remove(root.Path()
                             / "etc/talapm.d/sub/20-digit.conf.toml");
-    CHECK(load({}) == 6);
-    std::filesystem::remove(root.Path() / "etc/talapm.d/Upper.toml");
-    CHECK(load({}) == 5);
-    std::filesystem::remove(root.Path() / "etc/talapm.d/lower.toml");
     CHECK(load({}) == 4);
     root.Write("etc/talapm.conf.toml", "");
     CHECK(load({}) == 1);

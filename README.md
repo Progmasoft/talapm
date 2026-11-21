@@ -77,12 +77,10 @@ The configuration is TOML, in files that all have the same syntax. From the high
 those below it:
 
 1. `-s` and `--setting` on the command line, a later one over an earlier one.
-2. Files in `/etc/talapm.d/`, at any depth, whose name starts with a character that is not a letter or a digit;
-3. then those whose name starts with a digit;
-4. then with an uppercase letter;
-5. then with a lowercase letter. Within each of these, by the bytes of the name, so `00-a.toml` is above `10-b.toml`.
-6. `/etc/talapm.conf.toml`, which [etc/talapm.conf.toml](etc/talapm.conf.toml) installs with the defaults.
-7. `/etc/talapm.conf.d/config.toml`, installed empty.
+2. Files in `/etc/talapm.d/`, at any depth, read in the order of the bytes of their names (then of their paths), a
+   later one over an earlier one: `90-local.toml` overrides `10-vendor.toml`, as in `sysctl.d` and `conf.d`.
+3. `/etc/talapm.conf.toml`, which [etc/talapm.conf.toml](etc/talapm.conf.toml) installs with the defaults.
+4. `/etc/talapm.conf.d/config.toml`, installed empty.
 
 A file in `/etc/talapm.d/` counts only when its name ends in `.toml`, so `.conf.toml` too; `.toml.conf`, `.yaml`,
 `.json`, `.ini`, a name without an extension and every other file are not read at all. That directory is installed
