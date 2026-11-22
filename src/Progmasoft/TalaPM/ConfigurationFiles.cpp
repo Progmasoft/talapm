@@ -169,4 +169,47 @@ namespace Progmasoft::TalaPM
         return LoadConfiguration(*sources);
     }
 
+    Expected<Configuration>
+    LoadDefaultConfiguration(std::vector<std::string> settings)
+    {
+        ConfigurationSources sources;
+        sources.base.path = "defaults";
+        sources.main.path = "defaults";
+        sources.settings = std::move(settings);
+        return LoadConfiguration(sources);
+    }
+
+    std::optional<std::filesystem::path>
+    KeyringOf(const std::filesystem::path &root,
+              const RepositorySettings &repository)
+    {
+        if (repository.isBuiltIn)
+        {
+            return std::nullopt;
+        }
+        return root / "etc" / "talapm.keyrings" / "repo"
+               / (repository.name + ".gpg");
+    }
+
+    Expected<void>
+    ValidateSystem(const std::filesystem::path &root,
+                   const Configuration &configuration)
+    {
+        for (const RepositorySettings &repository : configuration.repositories)
+        {
+            std::optional<std::filesystem::path> keyring
+                = KeyringOf(root, repository);
+            std::error_code error;
+            if (repository.isEnabled && keyring
+                && !std::filesystem::is_regular_file(*keyring, error))
+            {
+                return Fail(ErrorCode::kBadConfiguration,
+                            "repo." + repository.name
+                                + " is enabled and has no keyring "
+                                + RelativeName(root, *keyring));
+            }
+        }
+        return {};
+    }
+
 } // namespace Progmasoft::TalaPM

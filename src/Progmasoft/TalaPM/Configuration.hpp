@@ -23,23 +23,47 @@ namespace Progmasoft::TalaPM
         bool keepCache = true;
         /// Whether the free space is checked before installing.
         bool checkSpace = true;
-        /// How much TalaPM writes, such as "User-Friendly".
+        /// How much TalaPM writes, one of kVerbosities.
         std::string verbosity = "User-Friendly";
     };
 
-    /// A repository of `[repo.built-in.<name>]`.
+    /// The values of `download.verbosity`, the most written first.
+    /// `--verbose` is "Always-Verbose" and `--quiet` "Always-Silent".
+    constexpr std::string_view kVerbosities[] = {
+        "Always-Verbose", "Somewhat-Verbose", "User-Friendly",
+        "Near-Silent",    "Always-Silent",
+    };
+
+    /// The `[color] level`.
+    enum class ColorLevel
+    {
+        kAuto,   ///< Colors when the output is a terminal.
+        kAlways, ///< Colors always.
+        kNever,  ///< No colors.
+    };
+
+    /// A repository: a built-in one, `[repo.built-in.<name>]`, whose mirrors
+    /// and keyring are TalaPM's own, or one of the user, `[repo.<name>]`.
     struct RepositorySettings
     {
         std::string name;
         bool isEnabled = false;
-        /// Its mirrors, first tried first; each is an https:// address.
+        /// Its mirrors, first tried first; each is an https:// address. For a
+        /// built-in repository, the mirrors embedded in TalaPM.
         std::vector<std::string> mirrorUris;
+        bool isBuiltIn = false;
+        /// The source that first named it, for messages about it.
+        std::string namedIn;
     };
+
+    /// The mirror embedded in TalaPM for every built-in repository.
+    constexpr std::string_view kBuiltInMirror = "https://package.tala.run/";
 
     /// The configuration of TalaPM, once every source is applied.
     struct Configuration
     {
         DownloadSettings download;
+        ColorLevel color = ColorLevel::kAuto;
         /// The `[signature] level` values, such as "Recommend" and "Database".
         std::vector<std::string> signatureLevels{ "Recommend", "Database" };
         /// The repositories in their priority, first first: as written, the
@@ -94,5 +118,29 @@ namespace Progmasoft::TalaPM
     /// @return The configuration, or kBadConfiguration naming the source.
     Expected<Configuration>
     LoadConfiguration(const ConfigurationSources &sources);
+
+    /// The configuration of no file: TalaPM's defaults, as installed.
+    ///
+    /// @return The defaults.
+    Configuration
+    DefaultConfiguration();
+
+    /// The configuration as TOML, every key in the order of the installed
+    /// file and the repositories in their priority; the mirrors of a built-in
+    /// repository are TalaPM's own and are not written.
+    ///
+    /// @param configuration The configuration.
+    /// @return The TOML text.
+    std::string
+    DumpConfiguration(const Configuration &configuration);
+
+    /// One setting, by its dotted key, as a TOML value: `download.parallel` is
+    /// `4`, `color.level` is `"Auto"`, `repo.example.mirror-uris` is a list.
+    ///
+    /// @param configuration The configuration.
+    /// @param key           The dotted key.
+    /// @return The value, or kUsage for a key that is not set.
+    Expected<std::string>
+    GetSetting(const Configuration &configuration, std::string_view key);
 
 } // namespace Progmasoft::TalaPM

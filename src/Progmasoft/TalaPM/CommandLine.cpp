@@ -24,13 +24,105 @@ namespace Progmasoft::TalaPM
             std::vector<std::string> options;
             std::vector<std::string> operands;
             std::vector<std::string> settings;
+            GlobalOptions global;
             bool hasHelp = false;
+            bool hasVersion = false;
         };
 
         tl::unexpected<Error>
         Usage(std::string message)
         {
             return Fail(ErrorCode::kUsage, std::move(message));
+        }
+
+        /// A global option that takes no value, and what it sets.
+        bool
+        TakeGlobalFlag(std::string_view argument, Words &words)
+        {
+            GlobalOptions &global = words.global;
+            const std::pair<std::string_view, bool *> kFlags[] = {
+                { "-y", &global.assumeYes },
+                { "--yes", &global.assumeYes },
+                { "--dry-run", &global.isDryRun },
+                { "-q", &global.isQuiet },
+                { "--quiet", &global.isQuiet },
+                { "-V", &global.isVerbose },
+                { "--verbose", &global.isVerbose },
+                { "--default-config", &global.useDefaultConfiguration },
+                { "--version", &words.hasVersion },
+            };
+            for (const auto &[name, flag] : kFlags)
+            {
+                if (argument == name)
+                {
+                    *flag = true;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// Reads the value of `--color`.
+        ///
+        /// @return The choice, or kUsage.
+        Expected<ColorChoice>
+        ParseColor(const std::string &value)
+        {
+            constexpr std::pair<std::string_view, ColorChoice> kChoices[] = {
+                { "always", ColorChoice::kAlways },
+                { "auto", ColorChoice::kAuto },
+                { "never", ColorChoice::kNever },
+            };
+            for (const auto &[text, choice] : kChoices)
+            {
+                if (value == text)
+                {
+                    return choice;
+                }
+            }
+            return Usage("--color takes always, auto or never, not '" + value
+                         + "'");
+        }
+
+        /// Takes the value of `--color` or `--root`, after `=` or next.
+        ///
+        /// @return How many arguments it used: 0 when the argument is neither,
+        ///         or an error.
+        Expected<std::size_t>
+        TakeGlobalValue(const std::vector<std::string_view> &arguments,
+                        std::size_t index,
+                        Words &words)
+        {
+            std::string_view argument = arguments[index];
+            std::string_view name = argument.substr(0, argument.find('='));
+            if (name != "--color" && name != "--root")
+            {
+                return std::size_t{ 0 };
+            }
+            bool isAttached = name.size() < argument.size();
+            if (!isAttached && index + 1 >= arguments.size())
+            {
+                return Usage(std::string(name) + " needs a value");
+            }
+            std::string value(isAttached ? argument.substr(name.size() + 1)
+                                         : arguments[index + 1]);
+            if (value.empty())
+            {
+                return Usage(std::string(name) + " has an empty value");
+            }
+            std::size_t used = isAttached ? 1U : 2U;
+            if (name == "--root")
+            {
+                words.global.root = std::move(value);
+                return used;
+            }
+            Expected<ColorChoice> color = ParseColor(value);
+            if (!color)
+            {
+                return tl::unexpected(color.error());
+            }
+            words.global.color = *color;
+            return used;
         }
 
         /// Takes the value of `-s` or `--setting` at an argument, attached or
@@ -102,6 +194,23 @@ namespace Progmasoft::TalaPM
                         return tl::unexpected(used.error());
                     }
                     index += *used;
+                    continue;
+                }
+                Expected<std::size_t> taken
+                    = isOption ? TakeGlobalValue(arguments, index, words)
+                               : Expected<std::size_t>(0);
+                if (!taken)
+                {
+                    return tl::unexpected(taken.error());
+                }
+                if (*taken > 0)
+                {
+                    index += *taken;
+                    continue;
+                }
+                if (isOption && TakeGlobalFlag(argument, words))
+                {
+                    ++index;
                     continue;
                 }
                 words.hasHelp
@@ -492,6 +601,52 @@ namespace Progmasoft::TalaPM
             return Finish(std::move(result), list);
         }
 
+        Expected<Command>
+        BuildConfig(const std::vector<std::string> &options,
+                    const std::vector<std::string> &operands)
+        {
+            std::string_view action = operands.empty()
+                                          ? std::string_view()
+                                          : std::string_view(operands[0]);
+            std::vector<std::string> rest(operands.begin()
+                                              + (operands.empty() ? 0 : 1),
+                                          operands.end());
+            const std::pair<std::string_view, Command> kActions[] = {
+                { "dump-default", Commands::ConfigDumpDefault{} },
+                { "validate", Commands::ConfigValidate{} },
+                { "dump", Commands::ConfigDump{} },
+                { "get", Commands::ConfigGet{} },
+            };
+            const auto *found = std::find_if(std::begin(kActions),
+                                             std::end(kActions),
+                                             [&](const auto &entry) {
+                                                 return entry.first == action;
+                                             });
+            if (found == std::end(kActions))
+            {
+                return Usage(
+                    "config takes dump-default, validate, dump or get");
+            }
+            // get takes the setting; the others take nothing.
+            std::string name = "config " + std::string(action);
+            std::size_t count = action == "get" ? 1 : 0;
+            Expected<void> result = ApplyOptions(name, options, {});
+            if (result)
+            {
+                result = ExpectOperands(name, rest, count, count);
+            }
+            if (!result)
+            {
+                return tl::unexpected(result.error());
+            }
+            Command command = found->second;
+            if (auto *get = std::get_if<Commands::ConfigGet>(&command))
+            {
+                get->setting = rest[0];
+            }
+            return command;
+        }
+
         /// The builder of each command name.
         Expected<Command>
         Build(std::string_view name,
@@ -516,6 +671,7 @@ namespace Progmasoft::TalaPM
                   OneOperand("provides", &Commands::Provides::path) },
                 { "cache", BuildCache },
                 { "repo", BuildRepository },
+                { "config", BuildConfig },
                 { "explain", OneOperand("explain", &Commands::Explain::code) },
             };
             for (const auto &[known, build] : kBuilders)
@@ -538,13 +694,32 @@ namespace Progmasoft::TalaPM
         {
             return tl::unexpected(words.error());
         }
+        if (words->global.isQuiet && words->global.isVerbose)
+        {
+            return Usage("--quiet and --verbose ask for opposite things; give "
+                         "one of them");
+        }
+        if (words->hasVersion && !words->hasHelp)
+        {
+            if (!words->operands.empty() || !words->options.empty())
+            {
+                return Usage("--version takes no command");
+            }
+            return Invocation{ Commands::Version{},
+                               words->global,
+                               std::move(words->settings) };
+        }
         if (words->hasHelp || words->operands.empty())
         {
             if (!words->hasHelp && !words->options.empty())
             {
                 return Usage("no command before " + words->options[0]);
             }
-            return Invocation{ Commands::Help{}, std::move(words->settings) };
+            std::string topic
+                = words->operands.empty() ? "" : words->operands[0];
+            return Invocation{ Commands::Help{ std::move(topic) },
+                               words->global,
+                               std::move(words->settings) };
         }
         std::string name = words->operands[0];
         std::vector<std::string> operands(words->operands.begin() + 1,
@@ -554,7 +729,39 @@ namespace Progmasoft::TalaPM
         {
             return tl::unexpected(command.error());
         }
-        return Invocation{ std::move(*command), std::move(words->settings) };
+        return Invocation{ std::move(*command),
+                           words->global,
+                           std::move(words->settings) };
+    }
+
+    void
+    ApplyGlobalOptions(const GlobalOptions &options,
+                       Configuration &configuration)
+    {
+        if (options.isQuiet)
+        {
+            configuration.download.verbosity = "Always-Silent";
+        }
+        if (options.isVerbose)
+        {
+            configuration.download.verbosity = "Always-Verbose";
+        }
+        if (!options.color)
+        {
+            return;
+        }
+        switch (*options.color)
+        {
+            case ColorChoice::kAlways:
+                configuration.color = ColorLevel::kAlways;
+                break;
+            case ColorChoice::kNever:
+                configuration.color = ColorLevel::kNever;
+                break;
+            default:
+                configuration.color = ColorLevel::kAuto;
+                break;
+        }
     }
 
 } // namespace Progmasoft::TalaPM

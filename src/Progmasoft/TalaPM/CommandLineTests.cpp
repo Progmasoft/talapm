@@ -240,3 +240,119 @@ TEST_CASE("help, unknown commands and the end of options")
         = ParseAs<Commands::Install>({ "install", "--", "-weird-name" });
     CHECK(dashed.packages == std::vector<std::string>{ "-weird-name" });
 }
+
+TEST_CASE("the global options stand anywhere and every command takes them")
+{
+    auto invocation = Parse({ "-y",
+                              "install",
+                              "pkg",
+                              "--dry-run",
+                              "--color",
+                              "never",
+                              "--root=/mnt/system",
+                              "-V",
+                              "--default-config" });
+    REQUIRE(invocation.has_value());
+    CHECK(std::holds_alternative<Commands::Install>(invocation->command));
+    const Progmasoft::TalaPM::GlobalOptions &options = invocation->options;
+    CHECK(options.assumeYes);
+    CHECK(options.isDryRun);
+    CHECK(options.isVerbose);
+    CHECK_FALSE(options.isQuiet);
+    CHECK(options.useDefaultConfiguration);
+    CHECK(options.color == Progmasoft::TalaPM::ColorChoice::kNever);
+    CHECK(options.root == std::string("/mnt/system"));
+
+    auto quiet = Parse(
+        { "--quiet", "--yes", "--color=always", "--root", "/r", "update" });
+    REQUIRE(quiet.has_value());
+    CHECK(quiet->options.isQuiet);
+    CHECK(quiet->options.assumeYes);
+    CHECK(quiet->options.color == Progmasoft::TalaPM::ColorChoice::kAlways);
+    CHECK(quiet->options.root == std::string("/r"));
+    CHECK(Parse({ "-q", "update", "--color=auto" })->options.color
+          == Progmasoft::TalaPM::ColorChoice::kAuto);
+}
+
+TEST_CASE("the global options refuse what they cannot take")
+{
+    for (std::vector<std::string_view> arguments :
+         { std::vector<std::string_view>{ "update", "-q", "-V" },
+           std::vector<std::string_view>{ "update", "--color", "sometimes" },
+           std::vector<std::string_view>{ "update", "--color" },
+           std::vector<std::string_view>{ "update", "--root=" },
+           std::vector<std::string_view>{ "update", "--version" } })
+    {
+        auto invocation = Parse(arguments);
+        REQUIRE_FALSE(invocation.has_value());
+        CHECK(invocation.error().code == ErrorCode::kUsage);
+    }
+}
+
+TEST_CASE("--version, and the help of TalaPM or of a command")
+{
+    CHECK(std::holds_alternative<Commands::Version>(
+        Parse({ "--version" })->command));
+    CHECK(ParseAs<Commands::Help>({ "--help" }).command.empty());
+    CHECK(ParseAs<Commands::Help>({ "install", "--help" }).command
+          == "install");
+    CHECK(ParseAs<Commands::Help>({ "config", "-h" }).command == "config");
+    CHECK(ParseAs<Commands::Help>({ "--version", "--help" }).command.empty());
+}
+
+TEST_CASE("config dump-default, validate, dump and get")
+{
+    CHECK(std::holds_alternative<Commands::ConfigDumpDefault>(
+        Parse({ "config", "dump-default" })->command));
+    CHECK(std::holds_alternative<Commands::ConfigValidate>(
+        Parse({ "config", "validate" })->command));
+    CHECK(std::holds_alternative<Commands::ConfigDump>(
+        Parse({ "config", "dump" })->command));
+    CHECK(ParseAs<Commands::ConfigGet>({ "config", "get", "download.parallel" })
+              .setting
+          == "download.parallel");
+    for (std::vector<std::string_view> arguments :
+         { std::vector<std::string_view>{ "config" },
+           std::vector<std::string_view>{ "config", "show" },
+           std::vector<std::string_view>{ "config", "get" },
+           std::vector<std::string_view>{ "config", "get", "a", "b" },
+           std::vector<std::string_view>{ "config", "dump", "extra" },
+           std::vector<std::string_view>{ "config", "dump", "--installed" } })
+    {
+        auto invocation = Parse(arguments);
+        REQUIRE_FALSE(invocation.has_value());
+        CHECK(invocation.error().code == ErrorCode::kUsage);
+    }
+}
+
+TEST_CASE("--quiet, --verbose and --color win over the configuration and -s")
+{
+    Progmasoft::TalaPM::Configuration configuration;
+    configuration.download.verbosity = "Always-Verbose";
+    configuration.color = Progmasoft::TalaPM::ColorLevel::kAlways;
+
+    auto quiet = Parse({ "update",
+                         "-q",
+                         "--color=never",
+                         "-s",
+                         "[download]\nverbosity = \"Always-Verbose\"\n" });
+    REQUIRE(quiet.has_value());
+    Progmasoft::TalaPM::ApplyGlobalOptions(quiet->options, configuration);
+    CHECK(configuration.download.verbosity == "Always-Silent");
+    CHECK(configuration.color == Progmasoft::TalaPM::ColorLevel::kNever);
+
+    Progmasoft::TalaPM::ApplyGlobalOptions(
+        Parse({ "update", "-V", "--color", "auto" })->options,
+        configuration);
+    CHECK(configuration.download.verbosity == "Always-Verbose");
+    CHECK(configuration.color == Progmasoft::TalaPM::ColorLevel::kAuto);
+
+    configuration.download.verbosity = "Near-Silent";
+    Progmasoft::TalaPM::ApplyGlobalOptions(Parse({ "update" })->options,
+                                           configuration);
+    CHECK(configuration.download.verbosity == "Near-Silent");
+    Progmasoft::TalaPM::ApplyGlobalOptions(
+        Parse({ "update", "--color=always" })->options,
+        configuration);
+    CHECK(configuration.color == Progmasoft::TalaPM::ColorLevel::kAlways);
+}

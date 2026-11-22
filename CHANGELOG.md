@@ -7,6 +7,14 @@ Versions follow [Semantic Versioning](https://semver.org/).
 
 ## Unreleased
 
+- Options of every command: `--help` of TalaPM or of a command, `--version`, `-y`/`--yes`, `--dry-run`,
+  `-q`/`--quiet`, `-V`/`--verbose`, `--color`, `--root` and `--default-config`. `-q`, `-V` and `--color` win over
+  the configuration, `-s` included.
+- `config dump-default`, `config validate`, `config dump` and `config get <setting>`.
+- `[color] level`, `"Auto"`, `"Always"` or `"Never"`; `download.verbosity` takes `"Always-Verbose"`,
+  `"Somewhat-Verbose"`, `"User-Friendly"`, `"Near-Silent"` and `"Always-Silent"`.
+- Repositories of the user, `[repo.<name>]` with `mirror-uris` and a keyring in `etc/talapm.keyrings/repo/`; the
+  built-in repositories take only `enabled`, their mirrors and keyrings being TalaPM's own.
 - The files of `etc/talapm.d/` are read in the byte order of their names, and a later one overrides an earlier one, so
   `90-local.toml` is above `10-vendor.toml`. A file whose name started with a character other than a letter or a digit,
   or with a digit, came first and overrode the others.

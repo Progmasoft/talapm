@@ -205,3 +205,34 @@ TEST_CASE("only .toml files of talapm.d are read")
     REQUIRE(configuration.has_value());
     CHECK(configuration->download.parallel == 3);
 }
+
+TEST_CASE("--default-config reads no file, and validate wants the keyrings of "
+          "enabled repositories")
+{
+    Root root("keyrings");
+    root.Write("etc/talapm.conf.toml", "[download]\nparallel = 2\n");
+    auto defaults = Progmasoft::TalaPM::LoadDefaultConfiguration(
+        { "[download]\nkeep-cache = false\n" });
+    REQUIRE(defaults.has_value());
+    CHECK(defaults->download.parallel == 4);
+    CHECK_FALSE(defaults->download.keepCache);
+
+    root.Write("etc/talapm.d/example.toml",
+               "[repo.example]\nenabled = true\nmirror-uris = "
+               "[\"https://repo.example.org/\"]\n"
+               "[repo.later]\nenabled = false\nmirror-uris = "
+               "[\"https://later.example.org/\"]\n");
+    auto configuration = LoadSystemConfiguration(root.Path(), {});
+    REQUIRE(configuration.has_value());
+    auto missing
+        = Progmasoft::TalaPM::ValidateSystem(root.Path(), *configuration);
+    REQUIRE_FALSE(missing.has_value());
+    CHECK(missing.error().message.find("etc/talapm.keyrings/repo/example.gpg")
+          != std::string::npos);
+    root.Write("etc/talapm.keyrings/repo/example.gpg", "key");
+    CHECK(Progmasoft::TalaPM::ValidateSystem(root.Path(), *configuration)
+              .has_value());
+    CHECK_FALSE(Progmasoft::TalaPM::KeyringOf(root.Path(),
+                                              configuration->repositories[0])
+                    .has_value());
+}
