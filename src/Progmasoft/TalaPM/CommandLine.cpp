@@ -62,6 +62,28 @@ namespace Progmasoft::TalaPM
             return false;
         }
 
+        /// Reads the value of `--color`.
+        ///
+        /// @return The choice, or kUsage.
+        Expected<ColorChoice>
+        ParseColor(const std::string &value)
+        {
+            constexpr std::pair<std::string_view, ColorChoice> kChoices[] = {
+                { "always", ColorChoice::kAlways },
+                { "auto", ColorChoice::kAuto },
+                { "never", ColorChoice::kNever },
+            };
+            for (const auto &[text, choice] : kChoices)
+            {
+                if (value == text)
+                {
+                    return choice;
+                }
+            }
+            return Usage("--color takes always, auto or never, not '" + value
+                         + "'");
+        }
+
         /// Takes the value of `--color` or `--root`, after `=` or next.
         ///
         /// @return How many arguments it used: 0 when the argument is neither,
@@ -88,26 +110,19 @@ namespace Progmasoft::TalaPM
             {
                 return Usage(std::string(name) + " has an empty value");
             }
+            std::size_t used = isAttached ? 1U : 2U;
             if (name == "--root")
             {
                 words.global.root = std::move(value);
-                return std::size_t{ isAttached ? 1U : 2U };
+                return used;
             }
-            constexpr std::pair<std::string_view, ColorChoice> kChoices[] = {
-                { "always", ColorChoice::kAlways },
-                { "auto", ColorChoice::kAuto },
-                { "never", ColorChoice::kNever },
-            };
-            for (const auto &[text, choice] : kChoices)
+            Expected<ColorChoice> color = ParseColor(value);
+            if (!color)
             {
-                if (value == text)
-                {
-                    words.global.color = choice;
-                    return std::size_t{ isAttached ? 1U : 2U };
-                }
+                return tl::unexpected(color.error());
             }
-            return Usage("--color takes always, auto or never, not '" + value
-                         + "'");
+            words.global.color = *color;
+            return used;
         }
 
         /// Takes the value of `-s` or `--setting` at an argument, attached or
@@ -596,41 +611,40 @@ namespace Progmasoft::TalaPM
             std::vector<std::string> rest(operands.begin()
                                               + (operands.empty() ? 0 : 1),
                                           operands.end());
-            std::string name = "config " + std::string(action);
-            Expected<void> result = ApplyOptions(name, options, {});
-            if (action == "get")
+            const std::pair<std::string_view, Command> kActions[] = {
+                { "dump-default", Commands::ConfigDumpDefault{} },
+                { "validate", Commands::ConfigValidate{} },
+                { "dump", Commands::ConfigDump{} },
+                { "get", Commands::ConfigGet{} },
+            };
+            const auto *found = std::find_if(std::begin(kActions),
+                                             std::end(kActions),
+                                             [&](const auto &entry) {
+                                                 return entry.first == action;
+                                             });
+            if (found == std::end(kActions))
             {
-                if (result)
-                {
-                    result = ExpectOperands(name, rest, 1, 1);
-                }
-                if (!result)
-                {
-                    return tl::unexpected(result.error());
-                }
-                return Command(Commands::ConfigGet{ rest[0] });
+                return Usage(
+                    "config takes dump-default, validate, dump or get");
             }
+            // get takes the setting; the others take nothing.
+            std::string name = "config " + std::string(action);
+            std::size_t count = action == "get" ? 1 : 0;
+            Expected<void> result = ApplyOptions(name, options, {});
             if (result)
             {
-                result = ExpectOperands(name, rest, 0, 0);
+                result = ExpectOperands(name, rest, count, count);
             }
             if (!result)
             {
                 return tl::unexpected(result.error());
             }
-            if (action == "dump-default")
+            Command command = found->second;
+            if (auto *get = std::get_if<Commands::ConfigGet>(&command))
             {
-                return Command(Commands::ConfigDumpDefault{});
+                get->setting = rest[0];
             }
-            if (action == "validate")
-            {
-                return Command(Commands::ConfigValidate{});
-            }
-            if (action == "dump")
-            {
-                return Command(Commands::ConfigDump{});
-            }
-            return Usage("config takes dump-default, validate, dump or get");
+            return command;
         }
 
         /// The builder of each command name.
